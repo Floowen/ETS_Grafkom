@@ -2,30 +2,50 @@
 <html>
 
 <body>
-<canvas id="gl-canvas" width="1500" height="720"> </canvas>
+<canvas id="gl-canvas" width="1850" height="720"> </canvas>
 
 <p> </p>
-<button id = "Button1">Increase Z</button>
+<!-- <button id = "Button1">Increase Z</button>
 <button id = "Button2">Decrease Z</button>
 <button id = "Button3">Increase R</button>
-<button id = "Button4">Decrease R</button>
+<button id = "Button4">Decrease R</button> -->
 
 <p> </p>
-<button id = "Button5">Increase theta</button>
+<!-- <button id = "Button5">Increase theta</button>
 <button id = "Button6">Decrease theta</button>
 <button id = "Button7">Increase phi</button>
-<button id = "Button8">Decrease phi</button>
+<button id = "Button8">Decrease phi</button> -->
+<div style="display: flex; justify-content: center;">
+    <div style="padding: 1rem;">
+        <button id = "ButtonMoveXNeg">Move Left</button>
+        <button id = "ButtonMoveXPos">Move Right</button>
+        <button id = "ButtonMoveYNeg">Move Down</button>
+        <button id = "ButtonMoveYPos">Move Up</button>
+        <div style="padding-top: 1rem;">
+            <button id = "toggleRotation">Toggle Rotation</button>
+            <input type="number" id="rotSpeed" value="1" step="1"> Rotation Speed <br>
+        </div>
+    </div>
+    <div style="padding: 1rem;">
+        <button id = "ButtonMoveXAccel">Simulate Acceleration</button>
+        <button id = "ButtonMoveXDeccel">Simulate Deceleration</button>
+        <button id = "ButtonMoveFalling">Simulate Free Fall</button>
+        <div style="padding-top: 1rem;">
+            <button id = "ButtonReset">Reset</button>
+        </div>
+    </div>
+    <div style="padding-left: 1rem; padding-right: 1rem;">
+        <p><b>Adjust Acceleration :</b></p>
+        <input type="number" id="accelXInput" value="10" step="0.1"> Acceleration / Deceleration <br>
+        <input type="number" id="accelYInput" value="19.5" step="0.1"> Gravity
+    </div>
+    <div>
+        <p><b>Initial Velocity and FOV</b></p>
+        <input type="number" id="initVelInput" value="0.5" step="0.1"> Initial Velocity <br>
+        <input type="number" id="fovyInput" value="76.0" step="1" min="1" max="120"> Field of View (Fovy) <br>
 
-<button id = "ButtonMoveXNeg">Move To The Left</button>
-<button id = "ButtonMoveXPos">Move To The Right</button>
-<button id = "ButtonMoveYNeg">Move Down</button>
-<button id = "ButtonMoveYPos">Move Up</button>
-
-<button id = "ButtonMoveXAccel">Move With Acceleration TEST</button>
-<button id = "ButtonMoveFalling">Falling TEST</button>
-<button id = "ButtonReset">Reset</button>
-<p> </p>
-
+    </div>
+</div>
 
 <script id="vertex-shader" type="x-shader/x-vertex">
 #version 300 es
@@ -64,4 +84,62 @@ main()
 <script src="perspective.js"></script>
 
 </body>
+
+<style>
+    canvas {
+        border: 1px solid black;
+    }
+
+    button {
+        font-size: 15px;
+        padding: 10px 24px;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        outline: none;
+        color: #ffff;
+        background-color: #352963;
+        border: none;
+    }
+
+    button:hover {
+        background-color: #615bcb;
+    }
+
+    body {
+        background-color: #191919;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: white;
+    }
+
+    p {
+        font-size: 15px;
+    }
+
+    input {
+        font-size: 15px;
+        padding: 10px;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        outline: none;
+        color: #ffff;
+        background-color: #352963;
+        border: none;
+    }
+
+    input:hover {
+        background-color: #615bcb;
+    }
+
+    input:focus {
+        background-color: #615bcb;
+    }
+
+    input[type=number] {
+        width: 100px;
+    }
+
+</style>
+
 </html>

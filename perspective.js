@@ -48,18 +48,18 @@ var vertexColors = [
 
 
 var near = 0.3;
-var far = 8.0;
-var radius = 7.0;
+var far = 11.0;
+var radius = 10.0;
 var theta = 0.0;
 var phi = 0.0;
 var dr = 5.0 * Math.PI/180.0;
 
-var fovy = 56.0;  // Update the fovy to match code 2
+var fovy = 76.0;  // Update the fovy to match code 2
 var aspect;
 
 var defaultOffset = -4.5; // default mesh position / offset
-var defaultXAccel = 0.004; // default acceleration
-var defaultYAccel = 0.05; // default acceleration / gravity
+var defaultXAccel =10; // default acceleration
+var defaultYAccel = 9.5; // default acceleration / gravity
 
 var horizontalOffset = defaultOffset; // mesh horizontal position / offset
 var verticalOffset = 0.0; // mesh vertical position / offset
@@ -69,12 +69,19 @@ var flagMoveXNeg = false;
 var flagMoveYPos = false;
 var flagMoveYNeg = false;
 var flagMoveAccel = false;
+var flagMoveDeccel = false;
 var flagFalling = false;
+var flagToggleRotate = true;
 
+var staticVelocity = 0.05;
 var velocityX = 0.0;
 var velocityY = 0.0;
+var tempaccelX = 0.0;
+var tempaccelY = 0.0;
 var accelX = defaultXAccel;
 var accelY = defaultYAccel;
+let totalTime = 0.0;
+var rotSpeed = 1.0;
 
 var modelViewMatrixLoc, projectionMatrixLoc;
 var modelViewMatrix, projectionMatrix;
@@ -137,7 +144,7 @@ function init() {
     var program = initShaders(gl, "vertex-shader", "fragment-shader");
     gl.useProgram(program);
 
-    createDodecahedron();  // Correct pentagon calls
+    createDodecahedron();  // Create the dodecahedron
 
     var cBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, cBuffer);
@@ -158,56 +165,107 @@ function init() {
     modelViewMatrixLoc = gl.getUniformLocation(program, "uModelViewMatrix");
     projectionMatrixLoc = gl.getUniformLocation(program, "uProjectionMatrix");
 
-    document.getElementById("Button1").onclick = function(){near  *= 1.1; far *= 1.1;};
-    document.getElementById("Button2").onclick = function(){near *= 0.9; far *= 0.9;};
-    document.getElementById("Button3").onclick = function(){radius *= 1.5;};
-    document.getElementById("Button4").onclick = function(){radius *= 0.5;};
-    document.getElementById("Button5").onclick = function(){theta += dr;};
-    document.getElementById("Button6").onclick = function(){theta -= dr;};
-    document.getElementById("Button7").onclick = function(){phi += dr;};
-    document.getElementById("Button8").onclick = function(){phi -= dr;};
+    // document.getElementById("Button1").onclick = function(){near  *= 1.1; far *= 1.1;};
+    // document.getElementById("Button2").onclick = function(){near *= 0.9; far *= 0.9;};
+    // document.getElementById("Button3").onclick = function(){radius *= 1.5;};
+    // document.getElementById("Button4").onclick = function(){radius *= 0.5;};
+    // document.getElementById("Button5").onclick = function(){theta += dr;};
+    // document.getElementById("Button6").onclick = function(){theta -= dr;};
+    // document.getElementById("Button7").onclick = function(){phi += dr;};
+    // document.getElementById("Button8").onclick = function(){phi -= dr;};
 
-    document.getElementById("ButtonMoveXPos").onclick = function(){flagMoveXPos = !flagMoveXPos;}; //moves the object to the right
-    document.getElementById("ButtonMoveXNeg").onclick = function(){flagMoveXNeg = !flagMoveXNeg;}; //moves the object to the left
-    document.getElementById("ButtonMoveYNeg").onclick = function(){flagMoveYNeg = !flagMoveYNeg;}; //moves the object down
-    document.getElementById("ButtonMoveYPos").onclick = function(){flagMoveYPos = !flagMoveYPos;}; //moves the object up
-    document.getElementById("ButtonMoveXAccel").onclick = function(){flagMoveAccel = !flagMoveAccel;} //accelerates the object to the right
-    document.getElementById("ButtonReset").onclick = function(){horizontalOffset = defaultOffset; verticalOffset = 0.0; velocityX = 0.0; velocityY = 0.0; accelX = defaultXAccel; accelY = defaultYAccel;}; //resets the object to the center
+    // Update acceleration based on user input
+    document.getElementById("accelXInput").onchange = function() {
+        tempaccelX = parseFloat(this.value);
+        accelX = tempaccelX;
+        console.log("Acceleration X has been updated to: " + accelX);
+    };
+    
+    document.getElementById("accelYInput").oninput = function() {
+        tempaccelY = parseFloat(this.value);
+        accelY = tempaccelY;
+        console.log("Acceleration Y has been updated to: " + accelY);
+    };
+
+    document.getElementById("initVelInput").oninput = function() {
+        staticVelocity = parseFloat(this.value);
+    };
+
+    document.getElementById("rotSpeed").oninput = function() {
+        rotSpeed = parseFloat(this.value);
+    };
+
+    document.getElementById("fovyInput").oninput = function() {
+        fovy = parseFloat(this.value);
+        console.log("Fovy updated to: " + fovy);
+    };
+
+    document.getElementById("toggleRotation").onclick = function(){flagToggleRotate = !flagToggleRotate;}; // toggles the rotation of the object
+    document.getElementById("ButtonMoveXPos").onclick = function(){flagMoveXPos = !flagMoveXPos;}; // moves the object to the right
+    document.getElementById("ButtonMoveXNeg").onclick = function(){flagMoveXNeg = !flagMoveXNeg;}; // moves the object to the left
+    document.getElementById("ButtonMoveYNeg").onclick = function(){flagMoveYNeg = !flagMoveYNeg;}; // moves the object down
+    document.getElementById("ButtonMoveYPos").onclick = function(){flagMoveYPos = !flagMoveYPos;}; // moves the object up
+    document.getElementById("ButtonMoveXAccel").onclick = function(){flagMoveAccel = !flagMoveAccel;} // accelerates the object to the right
+    document.getElementById("ButtonMoveXDeccel").onclick = function(){flagMoveDeccel = !flagMoveDeccel;}
+    document.getElementById("ButtonReset").onclick = function(){
+        horizontalOffset = defaultOffset; 
+        verticalOffset = 0.0; 
+        velocityX = 0.0; 
+        velocityY = 0.0; 
+        totalTime = 0.0;
+    }; // resets the object to the center
     document.getElementById("ButtonMoveFalling").onclick = function(){flagFalling = !flagFalling;}
 
     render();
 }
 
 function meshMove() {
-    var staticVelocity = 0.01;
+    var deltaTime = 0.016;
+
     if(flagMoveXPos) horizontalOffset += staticVelocity; //moves the object to the right
     if(flagMoveXNeg) horizontalOffset -= staticVelocity; //moves the object to the left
     if(flagMoveYPos) verticalOffset += staticVelocity; //moves the object up
     if(flagMoveYNeg) verticalOffset -= staticVelocity; //moves the object down
 
-    if(flagMoveAccel){ //accelerates the object to the right
-        velocityX += accelX;
-        horizontalOffset += velocityX;
+    if(flagMoveDeccel){ //accelerates the object to the right
+        totalTime += deltaTime;
+        velocityX += staticVelocity - (accelX * totalTime);
+        horizontalOffset += staticVelocity * totalTime - (0.5 * accelX * (totalTime*totalTime));
+        if(velocityX < 0) flagMoveDeccel = false;
         console.log("velocityX: " + velocityX);
+        console.log("posX: " + horizontalOffset);
+    }
+
+    if(flagMoveAccel){ //accelerates the object to the right
+        totalTime += deltaTime;
+        velocityX += staticVelocity + (accelX * totalTime);
+        horizontalOffset += staticVelocity * totalTime + (0.5 * accelX * (totalTime*totalTime));
+        console.log("velocityX: " + velocityX);
+        console.log("posX: " + horizontalOffset);
     }
 
     if(flagFalling){
-        velocityY += accelY;
-        verticalOffset -= velocityY;
+        totalTime += deltaTime;
+        velocityY += accelY * deltaTime; // simulate gravity
+        verticalOffset -= (0.5 * accelY * (totalTime*totalTime));
+        console.log("posY: " + verticalOffset);
         console.log("velocityY: " + velocityY);
     }
 }
 
 function checkBoundaries() {
-    if(horizontalOffset > 5.5 || horizontalOffset < -5.5){ //if the object reaches the edge of the screen, reverse the direction
+    if(horizontalOffset > 17 || horizontalOffset < -17){ //if the object reaches the edge of the screen, reverse the direction
         velocityX = 0;
+        totalTime = 0.0;
         flagMoveAccel = false;
+        flagMoveDeccel = false;
         if(horizontalOffset > 5.5) flagMoveXPos = false;
         if(horizontalOffset < -5.5) flagMoveXNeg = false;
     }
 
-    if(verticalOffset > 1.5 || verticalOffset < -1.6){ //if the object reaches the edge of the screen, reverse the direction
+    if(verticalOffset > 6 || verticalOffset < -6){ //if the object reaches the edge of the screen, reverse the direction
         velocityY = 0;
+        totalTime = 0.0;
         flagFalling = false;
         if(verticalOffset > 1.5) flagMoveYPos = false;
         if(verticalOffset < -1.6) flagMoveYNeg = false;
@@ -217,17 +275,19 @@ function checkBoundaries() {
 function render() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    theta += 1.0 * Math.PI/180.0; //make it rotate
+    if(flagToggleRotate) theta += rotSpeed * Math.PI/180.0; //make it rotate
+    
     if(flagFalling){
-        verticalOffset = 1.4;
+        verticalOffset = 5.9; //initial position
     }
+
     meshMove();
     checkBoundaries();
 
     eye = vec3(radius*Math.sin(theta)*Math.cos(phi),
         radius*Math.sin(theta)*Math.sin(phi), radius*Math.cos(theta));
 
-        modelViewMatrix = mult(translate(horizontalOffset, verticalOffset, 0.0), lookAt(eye, at , up));
+    modelViewMatrix = mult(translate(horizontalOffset, verticalOffset, 0.0), lookAt(eye, at , up));
     projectionMatrix = perspective(fovy, aspect, near, far);
 
     gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix));
